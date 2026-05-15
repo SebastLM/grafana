@@ -3,6 +3,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"encoding/json"
 	//"sync"
 	
 	"go.opentelemetry.io/otel/trace"
@@ -29,7 +30,7 @@ var (
 	_ backend.QueryDataHandler    = (*Service)(nil)
 	_ backend.CallResourceHandler = (*Service)(nil)
 	_ backend.CheckHealthHandler  = (*Service)(nil)
-    // TODO: add `_ backend.StreamHandler = (*Service)(nil)`
+    // TODO: add `_ backend.StreamHandler = (*Service)(nil)`	
 )
 
 
@@ -48,9 +49,10 @@ func ProvideService(httpClientProvider *httpclient.Provider, tracer trace.Tracer
 type datasourceInfo struct {
 	HTTPClient *http.Client
 	URL        string
+	Options    DockerOptions
+	SecureOpts DockerSecureOptions
+	API		   *DockerAPI
 	/* TODO:
-		- add DockerClient field
-		- add TLS settings, API version, etc
 		- add stream caches when streaming is implemented:
 			// streams   map[string]data.FrameJSONCache
 			// streamsMu sync.RWMutex
@@ -60,19 +62,31 @@ type datasourceInfo struct {
 
 func  newInstanceSettings(httpClientProvider *httpclient.Provider) datasource.InstanceFactoryFunc {
 	return func(ctx context.Context, settings backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
-		opts, err := settings.HTTPClientOptions(ctx)
-		if err != nil {
-			return nil, err
-		}
-		client, err := httpClientProvider.New(opts)
-		if err != nil {
-			return nil, err
-		}
-		return  &datasourceInfo {
-			HTTPClient: client,
-			URL:		settings.URL,
-		}, nil
-	}
+		var dockerOpts DockerOptions
+        if len(settings.JSONData) > 0 {
+            if err := json.Unmarshal(settings.JSONData, &dockerOpts); err != nil {
+                return nil, fmt.Errorf("parsing settings: %w", err)
+            }
+        }
+
+        secureOpts := DockerSecureOptions{
+            TLSCACert:     settings.DecryptedSecureJSONData["tlsCACert"],
+            TLSClientCert: settings.DecryptedSecureJSONData["tlsClientCert"],
+            TLSClientKey:  settings.DecryptedSecureJSONData["tlsClientKey"],
+        }
+
+        api, err := newDockerAPI(dockerOpts, secureOpts)
+        if err != nil {
+            return nil, fmt.Errorf("creating docker api: %w", err)
+        }
+
+        return &datasourceInfo{
+            URL:        settings.URL,
+            Options:    dockerOpts,
+            SecureOpts: secureOpts,
+            API:        api,
+        }, nil
+    }
 }
 
 
