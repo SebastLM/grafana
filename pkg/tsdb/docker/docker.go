@@ -35,9 +35,9 @@ var (
 
 
 func ProvideService(httpClientProvider *httpclient.Provider, tracer trace.Tracer) *Service {
-	logger := backend.NewLoggerWith("logger", "docker")
+	logger := backend.NewLoggerWith("logger", "tsdb.docker")
 	s := &Service{
-		im:      datasource.NewInstanceManager(newInstanceSettings(httpClientProvider)),
+		im:      datasource.NewInstanceManager(newInstanceSettings(httpClientProvider, logger)),
 		tracer:  tracer,
 		logger:  logger,
 	}
@@ -47,7 +47,7 @@ func ProvideService(httpClientProvider *httpclient.Provider, tracer trace.Tracer
 
 
 type datasourceInfo struct {
-	HTTPClient *http.Client
+	HTTPClient *http.Client // unused for now
 	URL        string
 	Options    DockerOptions
 	SecureOpts DockerSecureOptions
@@ -60,7 +60,7 @@ type datasourceInfo struct {
 }
 
 
-func  newInstanceSettings(httpClientProvider *httpclient.Provider) datasource.InstanceFactoryFunc {
+func  newInstanceSettings(httpClientProvider *httpclient.Provider, logger log.Logger) datasource.InstanceFactoryFunc {
 	return func(ctx context.Context, settings backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
 		var dockerOpts DockerOptions
         if len(settings.JSONData) > 0 {
@@ -75,12 +75,22 @@ func  newInstanceSettings(httpClientProvider *httpclient.Provider) datasource.In
             TLSClientKey:  settings.DecryptedSecureJSONData["tlsClientKey"],
         }
 
-        api, err := newDockerAPI(dockerOpts, secureOpts)
+        api, err := newDockerAPI(dockerOpts, secureOpts, logger)
         if err != nil {
             return nil, fmt.Errorf("creating docker api: %w", err)
         }
 
+		opts, err := settings.HTTPClientOptions(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("http client options: %w", err)
+		}
+		client, err := httpClientProvider.New(opts)
+		if err != nil {
+			return nil, fmt.Errorf("creating http client: %w", err)
+		}
+
         return &datasourceInfo{
+			HTTPClient: client,
             URL:        settings.URL,
             Options:    dockerOpts,
             SecureOpts: secureOpts,
@@ -101,19 +111,41 @@ func (s *Service) getDSInfo(ctx context.Context, pluginCtx backend.PluginContext
 
 
 func (s *Service) QueryData(ctx context.Context, req *backend.QueryDataRequest) (*backend.QueryDataResponse, error) {
+	logger := s.logger.FromContext(ctx)
+
 	if len(req.Queries) == 0 {
 		return nil, fmt.Errorf("query is empty")
 	}
-	if _, err := s.getDSInfo(ctx, req.PluginContext); err != nil {
+	dsInfo, err := s.getDSInfo(ctx, req.PluginContext)
+	if err != nil {
+		logger.Error("Failed to get data source info", "error", err)
 		return nil, err
 	}
 	response := backend.NewQueryDataResponse()
-	for _, q := range req.Queries {
-		response.Responses[q.RefID] = backend.ErrDataResponse(
-			backend.StatusNotImplemented, "QueryData not yet implemented",
-		)
-	}
+    for _, q := range req.Queries {
+        response.Responses[q.RefID] = s.handleQuery(ctx, dsInfo, q)
+    }
+
 	return response, nil
+}
+
+
+func (s *Service) handleQuery(ctx context.Context, dsInfo *datasourceInfo, query backend.DataQuery) backend.DataResponse {
+	logger := s.logger.FromContext(ctx)
+	
+	parsed, err := parseQuery(query) // TODO
+	if err != nil {
+		return backend.ErrDataResponse(backend.StatusBadRequest, err.Error())
+	}
+	
+	resp, err := dsInfo.API.DataQuery(ctx, *parsed);
+	if err != nil {
+		logger.Error("Failed to perform the query", "error", err)
+		return backend.ErrDataResponse(backend.StatusInternal, err.Error())
+	}
+
+	_ = resp
+    return backend.ErrDataResponse(backend.StatusNotImplemented, "frame conversion not yet implemented")
 }
 
 
