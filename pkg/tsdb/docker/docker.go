@@ -1,20 +1,19 @@
 package docker
+
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
-	"encoding/json"
-	//"sync"
-	
+
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/datasource"
+	"github.com/grafana/grafana-plugin-sdk-go/backend/httpclient"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
-	"github.com/grafana/grafana-plugin-sdk-go/backend/httpclient"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/resource/httpadapter"
-	// "github.com/grafana/grafana-plugin-sdk-go/data"
 )
 
 
@@ -133,7 +132,7 @@ func (s *Service) QueryData(ctx context.Context, req *backend.QueryDataRequest) 
 func (s *Service) handleQuery(ctx context.Context, dsInfo *datasourceInfo, query backend.DataQuery) backend.DataResponse {
 	logger := s.logger.FromContext(ctx)
 	
-	parsed, err := parseQuery(query) // TODO
+	parsed, err := parseQuery(query)
 	if err != nil {
 		return backend.ErrDataResponse(backend.StatusBadRequest, err.Error())
 	}
@@ -144,8 +143,12 @@ func (s *Service) handleQuery(ctx context.Context, dsInfo *datasourceInfo, query
 		return backend.ErrDataResponse(backend.StatusInternal, err.Error())
 	}
 
-	_ = resp
-    return backend.ErrDataResponse(backend.StatusNotImplemented, "frame conversion not yet implemented")
+	frame, err := ResponseParser(resp)
+	if err != nil {
+		logger.Error("Failed to convert query response into frames", "error", err)
+		return backend.ErrDataResponse(backend.StatusInternal, err.Error())
+	}
+    return frame
 }
 
 

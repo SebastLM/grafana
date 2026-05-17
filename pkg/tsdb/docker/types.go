@@ -20,12 +20,11 @@ const (
 	ResourceTypeSystemDF       = "system_df"
 )
 
-// TODO: parse the frontend query into DockerQuery in query.go
-type DockerQuery struct { // not final
+type DockerQuery struct {
 	ResourceType string `json:"resourceType"`
 	ContainerID  string `json:"containerId,omitempty"`
+	// add more in future
 }
-
 
 
 // from GET /containers/{id}/stats
@@ -51,8 +50,14 @@ type MemoryStats struct {
 }
 
 type NetworkStats struct {
-	RxBytes uint64 `json:"rx_bytes"`
-	TxBytes uint64 `json:"tx_bytes"`
+    RxBytes   uint64 `json:"rx_bytes"`
+    RxPackets uint64 `json:"rx_packets"`
+    RxErrors  uint64 `json:"rx_errors"`
+    RxDropped uint64 `json:"rx_dropped"`
+    TxBytes   uint64 `json:"tx_bytes"`
+    TxPackets uint64 `json:"tx_packets"`
+    TxErrors  uint64 `json:"tx_errors"`
+    TxDropped uint64 `json:"tx_dropped"`
 }
 
 

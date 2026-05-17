@@ -7,9 +7,9 @@ import (
     "github.com/grafana/grafana-plugin-sdk-go/backend"
 )
 
-func parseQuery(q backend.DataQuery) (*DockerQuery, error) {
+func parseQuery(query backend.DataQuery) (*DockerQuery, error) {
     var dq DockerQuery
-    if err := json.Unmarshal(q.JSON, &dq); err != nil {
+    if err := json.Unmarshal(query.JSON, &dq); err != nil {
         return nil, fmt.Errorf("parsing query JSON: %w", err)
     }
 
