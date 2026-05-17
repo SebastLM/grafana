@@ -1,0 +1,32 @@
+{
+  "name": "Docker",
+  "type": "datasource",
+  "id": "docker",
+
+  "metrics": true,
+  "backend": true,
+
+  "executable": "gpx_docker",
+  "info": {
+    "description": "Container management datasource for Docker stats and system metrics",
+    "author": {
+      "name": "test"
+    },
+    "logos": {
+      "small": "img/docker_logo.png",
+      "large": "img/docker_logo.png"
+    },
+    "links": [
+      {
+        "name": "Learn more",
+        "url": "https://docs.docker.com/"
+      }
+    ],
+    "version": "1.0.0"
+  },
+
+  "dependencies": {
+    "grafanaDependency": ">=11.0.0",
+    "plugins": []
+  }
+}
