@@ -10,6 +10,7 @@ import (
 	"net/http"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
+	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/moby/moby/client"
 )
 
@@ -20,15 +21,10 @@ type DockerAPI struct {
 	log  log.Logger
 }
 
-/*
-type DockerResponse {
-	Body []byte
-}
-*/
 
-func newDockerAPI(opts DockerOptions, secure DockerSecureOptions, logger log.Logger) (*DockerAPI, error) {
+func newDockerAPI(host string, opts DockerOptions, secure DockerSecureOptions, logger log.Logger) (*DockerAPI, error) {
 	clientOpts := []client.Opt {
-		client.WithHost(opts.Host),
+		client.WithHost(host),
 	}
 
 	if opts.APIVersion != "" {
@@ -51,7 +47,7 @@ func newDockerAPI(opts DockerOptions, secure DockerSecureOptions, logger log.Log
 		return nil, fmt.Errorf("creating docker client: %w", err)
 	}
 
-	return &DockerAPI{cli: cli, host: opts.Host, log: logger}, nil
+	return &DockerAPI{cli: cli, host: host, log: logger}, nil
 }
 
 
@@ -86,7 +82,7 @@ func (api *DockerAPI) DataQuery(ctx context.Context, query DockerQuery) (any, er
     case ResourceTypeSystemDF:
         return api.getSystemDF(ctx)
     default:
-        return nil, fmt.Errorf("unknown resource type: %s", query.ResourceType)
+        return nil, backend.DownstreamError(fmt.Errorf("unknown resource type: %s", query.ResourceType))
     }
 }
 
@@ -97,7 +93,7 @@ func (api *DockerAPI) getContainerStats(ctx context.Context, containerID string)
     }
     resp, err := api.cli.ContainerStats(ctx, containerID, client.ContainerStatsOptions{}) // zero-value gives us Stream: false, which is what we want
     if err != nil {
-        return nil, fmt.Errorf("fetching container stats: %w", err)
+        return nil, classifyDockerError(err, "fetching container stats")
     }
 
     defer func() {
@@ -108,11 +104,11 @@ func (api *DockerAPI) getContainerStats(ctx context.Context, containerID string)
 
     body, err := io.ReadAll(resp.Body)
     if err != nil {
-        return nil, fmt.Errorf("reading stats response: %w", err)
+        return nil, backend.DownstreamError(fmt.Errorf("reading stats response: %w", err))
     }
     var stats ContainerStats
     if err := json.Unmarshal(body, &stats); err != nil {
-        return nil, fmt.Errorf("parsing stats response: %w", err)
+        return nil, backend.DownstreamError(fmt.Errorf("parsing stats response: %w", err))
     }
     return &stats, nil
 }
@@ -121,15 +117,37 @@ func (api *DockerAPI) getContainerStats(ctx context.Context, containerID string)
 func (api *DockerAPI) getSystemDF(ctx context.Context) (*SystemDF, error) {
     diskUsage, err := api.cli.DiskUsage(ctx, client.DiskUsageOptions{})
     if err != nil {
-        return nil, fmt.Errorf("fetching disk usage: %w", err)
+        return nil, classifyDockerError(err, "fetching disk usage")
     }
     raw, err := json.Marshal(diskUsage)
     if err != nil {
-        return nil, fmt.Errorf("re-encoding disk usage: %w", err)
+        return nil, backend.DownstreamError(fmt.Errorf("re-encoding disk usage: %w", err))
     }
     var system SystemDF
     if err := json.Unmarshal(raw, &system); err != nil {
-        return nil, fmt.Errorf("parsing disk usage: %w", err)
+        return nil, backend.DownstreamError(fmt.Errorf("parsing disk usage: %w", err))
     }
     return &system, nil
+}
+
+// used in streaming.go
+func (api *DockerAPI) StreamContainerStatsStreaming(ctx context.Context, containerID string) (io.ReadCloser, error) {
+    if containerID == "" {
+        return nil, fmt.Errorf("containerId is required for container_stats")
+    }
+    resp, err := api.cli.ContainerStats(ctx, containerID, client.ContainerStatsOptions{Stream: true})
+    if err != nil {
+        return nil, classifyDockerError(err, "fetching container stats")
+    }
+    return resp.Body, nil
+}
+
+
+// in further use cases have a switch for the different possible errors
+// handling each type accordingly to that
+func classifyDockerError(err error, op string) error {
+    if err == nil {
+        return nil
+    }
+    return backend.DownstreamError(fmt.Errorf("%s: %w", op, err))
 }

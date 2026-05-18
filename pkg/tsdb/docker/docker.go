@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sync"
 
 	"go.opentelemetry.io/otel/trace"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/resource/httpadapter"
+	"github.com/grafana/grafana-plugin-sdk-go/data"
 )
 
 
@@ -29,7 +31,7 @@ var (
 	_ backend.QueryDataHandler    = (*Service)(nil)
 	_ backend.CallResourceHandler = (*Service)(nil)
 	_ backend.CheckHealthHandler  = (*Service)(nil)
-    // TODO: add `_ backend.StreamHandler = (*Service)(nil)`	
+    // _ backend.StreamHandler       = (*Service)(nil)
 )
 
 
@@ -51,11 +53,8 @@ type datasourceInfo struct {
 	Options    DockerOptions
 	SecureOpts DockerSecureOptions
 	API		   *DockerAPI
-	/* TODO:
-		- add stream caches when streaming is implemented:
-			// streams   map[string]data.FrameJSONCache
-			// streamsMu sync.RWMutex
-	*/
+	streams   map[string]data.FrameJSONCache
+	streamsMu sync.RWMutex
 }
 
 
@@ -74,7 +73,7 @@ func  newInstanceSettings(httpClientProvider *httpclient.Provider, logger log.Lo
             TLSClientKey:  settings.DecryptedSecureJSONData["tlsClientKey"],
         }
 
-        api, err := newDockerAPI(dockerOpts, secureOpts, logger)
+        api, err := newDockerAPI(settings.URL, dockerOpts, secureOpts, logger)
         if err != nil {
             return nil, fmt.Errorf("creating docker api: %w", err)
         }
@@ -94,6 +93,7 @@ func  newInstanceSettings(httpClientProvider *httpclient.Provider, logger log.Lo
             Options:    dockerOpts,
             SecureOpts: secureOpts,
             API:        api,
+			streams:    make(map[string]data.FrameJSONCache),
         }, nil
     }
 }

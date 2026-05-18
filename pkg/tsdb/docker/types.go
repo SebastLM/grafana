@@ -3,7 +3,6 @@ package docker
 // ---- Settings ----
 
 type DockerOptions struct {
-	Host       string `json:"host"`
 	APIVersion string `json:"apiVersion,omitempty"`
 }
 
