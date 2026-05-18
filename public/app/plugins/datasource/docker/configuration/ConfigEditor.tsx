@@ -1,14 +1,24 @@
-// ConfigEditor.tsx
-import { DataSourcePluginOptionsEditorProps } from '@grafana/data';
-import { Alert } from '@grafana/ui';
+import { 
+  type DataSourcePluginOptionsEditorProps,
+} from '@grafana/data';
+import { config } from '@grafana/runtime';
+import { DataSourceHttpSettings } from '@grafana/ui';
 import { DockerOptions } from '../types';
 
-type Props = DataSourcePluginOptionsEditorProps<DockerOptions>;
+export const ConfigEditor = (props: DataSourcePluginOptionsEditorProps<DockerOptions>) => {
+  const { options, onOptionsChange } = props;
 
-export const ConfigEditor = ({ options, onOptionsChange }: Props) => {
   return (
     <>
-      <Alert title="TODO" severity="info">TODO implement config editor</Alert>;
+      <DataSourceHttpSettings
+        defaultUrl="http://localhost:2375"
+        dataSourceConfig={options}
+        onChange={(newOptions) => {
+          console.log('[Docker DataSource] onOptionsChange:', newOptions);
+          onOptionsChange(newOptions);
+        }}
+        secureSocksDSProxyEnabled={config.secureSocksDSProxyEnabled}
+      />
     </>
   );
 };

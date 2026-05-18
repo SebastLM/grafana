@@ -1,6 +1,6 @@
 import { DataSourcePlugin } from '@grafana/data';
 
-import { DockerDatasource } from "./datasource";
+import DockerDatasource from "./datasource";
 
 import { DockerQueryEditor } from './components/DockerQueryEditor';
 import { ConfigEditor } from './configuration/ConfigEditor';
