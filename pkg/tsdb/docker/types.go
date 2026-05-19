@@ -19,6 +19,7 @@ const (
 	ResourceTypeSystemDF       = "system_df"
 )
 
+
 type DockerQuery struct {
 	ResourceType string `json:"resourceType"`
 	ContainerID  string `json:"containerId,omitempty"`
@@ -75,4 +76,11 @@ type DFUsage struct {
 	TotalCount  int   `json:"TotalCount"`
 	Reclaimable int64 `json:"Reclaimable"`
 	TotalSize   int64 `json:"TotalSize"`
+}
+
+
+// from Get /containers/json
+type GetContainers struct {
+	Id string `json:"Id"`
+	Names []string `json:"Names"`
 }

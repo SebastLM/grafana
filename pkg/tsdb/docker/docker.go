@@ -155,11 +155,3 @@ func (s *Service) handleQuery(ctx context.Context, dsInfo *datasourceInfo, query
 func (s *Service) CallResource(ctx context.Context, req *backend.CallResourceRequest, sender backend.CallResourceResponseSender) error {
 	return s.resourceHandler.CallResource(ctx, req, sender)
 }
-
-
-// TODO: move newResourceMux to resource<...>.go and register real handlers like:
-//   mux.HandleFunc("/containers", s.handleListContainers)
-//   mux.HandleFunc("/version",    s.handleVersion)
-func (s *Service) newResourceMux() *http.ServeMux {
-	return http.NewServeMux()
-}
