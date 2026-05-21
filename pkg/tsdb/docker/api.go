@@ -131,7 +131,7 @@ func (api *DockerAPI) getSystemDF(ctx context.Context) (*SystemDF, error) {
 }
 
 // used in streaming.go
-func (api *DockerAPI) StreamContainerStatsStreaming(ctx context.Context, containerID string) (io.ReadCloser, error) {
+func (api *DockerAPI) StreamContainerStats(ctx context.Context, containerID string) (io.ReadCloser, error) {
     if containerID == "" {
         return nil, fmt.Errorf("containerId is required for container_stats")
     }

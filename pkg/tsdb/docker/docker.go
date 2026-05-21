@@ -15,8 +15,12 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/resource/httpadapter"
+	"github.com/grafana/grafana-plugin-sdk-go/config"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 )
+
+
+const flagDockerStreaming = "dockerStreaming"
 
 
 type Service struct {
@@ -31,7 +35,7 @@ var (
 	_ backend.QueryDataHandler    = (*Service)(nil)
 	_ backend.CallResourceHandler = (*Service)(nil)
 	_ backend.CheckHealthHandler  = (*Service)(nil)
-    // _ backend.StreamHandler       = (*Service)(nil)
+    _ backend.StreamHandler       = (*Service)(nil)
 )
 
 
@@ -154,4 +158,9 @@ func (s *Service) handleQuery(ctx context.Context, dsInfo *datasourceInfo, query
 
 func (s *Service) CallResource(ctx context.Context, req *backend.CallResourceRequest, sender backend.CallResourceResponseSender) error {
 	return s.resourceHandler.CallResource(ctx, req, sender)
+}
+
+
+func isFeatureEnabled(ctx context.Context, feature string) bool {
+	return config.GrafanaConfigFromContext(ctx).FeatureToggles().IsEnabled(feature)
 }

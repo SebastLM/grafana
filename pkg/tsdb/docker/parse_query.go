@@ -28,3 +28,12 @@ func parseQuery(query backend.DataQuery) (*DockerQuery, error) {
 
     return &dq, nil
 }
+
+
+func parseQueryRaw(raw json.RawMessage) (*DockerQuery, error) {
+    var q DockerQuery
+    if err := json.Unmarshal(raw, &q); err != nil {
+        return nil, backend.DownstreamError(fmt.Errorf("failed to parse query model: %w", err))
+    }
+    return &q, nil
+}
