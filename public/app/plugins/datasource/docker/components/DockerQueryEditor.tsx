@@ -1,8 +1,10 @@
-import { Stack, Select, Input } from '@grafana/ui';
+import { Stack, Select } from '@grafana/ui';
 import type { QueryEditorProps } from '@grafana/data';
 
 import type DockerDatasource from '../datasource';
 import type { DockerOptions, DockerQuery } from '../types';
+
+import { ContainerSelect } from './ContainerSelect';
 
 type Props = QueryEditorProps<DockerDatasource, DockerQuery, DockerOptions>;
 
@@ -11,10 +13,15 @@ const RESOURCE_TYPES = [
   { label: 'System DF', value: 'system_df' },
 ];
 
-export function DockerQueryEditor({ query, onChange, onRunQuery }: Props) {
+export function DockerQueryEditor({
+  query,
+  onChange,
+  onRunQuery,
+  datasource,
+}: Props) {
   const update = (patch: Partial<DockerQuery>) => {
-    const newQuery = { ...query, ...patch };
-    onChange(newQuery);
+    onChange({ ...query, ...patch });
+
     onRunQuery();
   };
 
@@ -31,36 +38,17 @@ export function DockerQueryEditor({ query, onChange, onRunQuery }: Props) {
       />
 
       {query.resourceType === 'container_stats' && (
-        <Stack direction="column" gap={1}>
-
-          {/* TODO later only use the select with backend provided list of available containers */}
-          <Select
-            value={
-              query.containerId
-                ? { label: query.containerId, value: query.containerId }
-                : null
-            }
-            options={[]}
-            onChange={(v) =>
-              update({
-                containerId: v?.value ?? '',
-              })
-            }
-            placeholder="Select container (optional)"
-            isClearable
-          />
-
-          {/* Temporary way of selecting containers manually */}
-          <Input
-            value={query.containerId ?? ''}
-            placeholder="Or type container ID manually"
-            onChange={(e) =>
-              update({
-                containerId: e.currentTarget.value,
-              })
-            }
-          />
-        </Stack>
+        <ContainerSelect
+          value={query.containerId}
+          onChange={(containerId: string) =>
+            update({
+              containerId,
+            })
+          }
+          loadOptions={(page, limit) =>
+            datasource.getContainers(page, limit)
+          }
+        />
       )}
     </Stack>
   );

@@ -36,6 +36,7 @@ func healthcheck(ctx context.Context, req *backend.CheckHealthRequest,  s *Servi
 
     healthCheckQuery := backend.DataQuery{
         RefID:    refID,
+        JSON: []byte(`{"resourceType":"system_df"}`),
     } // TODO build query
 
 

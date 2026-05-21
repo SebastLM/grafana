@@ -54,4 +54,21 @@ export default class DockerDatasource
   exportToAbstractQueries(queries: DockerQuery[]): Promise<AbstractQuery[]> {
     return Promise.resolve([]);
   }
+
+
+  async getContainers(page : number , limit: number) {
+    console.error("this::: ", typeof this.postResource);
+
+    try {
+      const containers = await this.getResource<string[]>('/containers', {
+      });
+      console.error("CONTAINERSSS::: ", containers);
+      return containers;
+
+    } catch (err) {
+      return Promise.reject(err);
+    }
+
+    return [];
+  }
 }
