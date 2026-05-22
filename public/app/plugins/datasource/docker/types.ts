@@ -9,3 +9,14 @@ export interface DockerQuery extends DataQuery {
 
 export interface DockerOptions extends DataSourceJsonData {
 } // TODO
+
+export type DockerContainer = {
+  Id: string;
+  Names: string[];
+};
+
+
+export type ContainerOption = {
+  label: string;
+  value: string;
+};

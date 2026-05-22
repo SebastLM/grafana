@@ -11,7 +11,7 @@ import {
   DataSourceWithBackend,
 } from '@grafana/runtime';
 
-import { DockerQuery, DockerOptions } from './types';
+import { DockerQuery, DockerOptions, DockerContainer, ContainerOption } from './types';
 
 
 export default class DockerDatasource
@@ -56,19 +56,12 @@ export default class DockerDatasource
   }
 
 
-  async getContainers(page : number , limit: number) {
-    console.error("this::: ", typeof this.postResource);
+  async getContainers(page: number, limit: number): Promise<ContainerOption[]> {
+    const containers = await this.getResource<DockerContainer[]>('/containers', {});
 
-    try {
-      const containers = await this.getResource<string[]>('/containers', {
-      });
-      console.error("CONTAINERSSS::: ", containers);
-      return containers;
-
-    } catch (err) {
-      return Promise.reject(err);
-    }
-
-    return [];
+    return containers.map((c) => ({
+      label: c.Names?.[0] ?? c.Id,
+      value: c.Id,
+    }));
   }
 }

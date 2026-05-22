@@ -14,7 +14,7 @@ interface Props {
 
   onChange: (containerId: string) => void;
 
-  loadOptions: (page: number, limit: number) => Promise<string[]>;
+  loadOptions: (page: number, limit: number) => Promise<ContainerOption[]>;
 }
 
 const LIMIT_OPTIONS: Array<SelectableValue<number>> = [
@@ -49,12 +49,7 @@ export function ContainerSelect({
       pageNumber,
       pageLimit
     );
-
-    const newOptions: ContainerOption[] =
-      rawOptions.map((container) => ({
-        label: container,
-        value: container,
-      }));
+    const newOptions: ContainerOption[] = rawOptions;
 
     if (pageNumber === 0) {
       setOptions(newOptions);
