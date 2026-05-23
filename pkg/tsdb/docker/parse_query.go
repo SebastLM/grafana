@@ -22,6 +22,8 @@ func parseQuery(query backend.DataQuery) (*DockerQuery, error) {
         }
     case ResourceTypeSystemDF:
 		// nothing to be verified
+    case ResourceTypeAllContainersInfo:
+		// nothing to be verified
     default:
         return nil, fmt.Errorf("unknown resourceType: %s", dq.ResourceType)
     }

@@ -15,6 +15,7 @@ type DockerOptions struct {
 const (
 	ResourceTypeContainerStats = "container_stats"
 	ResourceTypeSystemDF       = "system_df"
+	ResourceTypeAllContainersInfo  = "all_containers_info"
 )
 
 
@@ -63,10 +64,10 @@ type NetworkStats struct {
 
 // from GET /system/df
 type SystemDF struct {
-	ImageUsage      DFUsage `json:"ImageUsage"`
-	ContainerUsage  DFUsage `json:"ContainerUsage"`
-	VolumeUsage     DFUsage `json:"VolumeUsage"`
-	BuildCacheUsage DFUsage `json:"BuildCacheUsage"`
+    ImageUsage      DFUsage `json:"Images"`
+    ContainerUsage  DFUsage `json:"Containers"`
+    VolumeUsage     DFUsage `json:"Volumes"`
+    BuildCacheUsage DFUsage `json:"BuildCache"`
 }
 
 // shared by all df categories
@@ -82,4 +83,26 @@ type DFUsage struct {
 type GetContainers struct {
 	Id string `json:"Id"`
 	Names []string `json:"Names"`
+}
+
+
+// all containers
+// from GET /system/df
+type AllContainersInfo struct {
+    Items []ContainerSummary `json:"Items"`
+}
+
+type ContainerSummary struct {
+    Names  []string  `json:"Names"`
+    State  string    `json:"State"`
+    Status string    `json:"Status"`
+	Image  string    `json:"Image"`
+	Ports []Port 	 `json:"Ports"`
+}
+
+type Port struct {
+    IP          string `json:"IP"`
+    PrivatePort int64    `json:"PrivatePort"`
+    PublicPort  int64    `json:"PublicPort,omitempty"`
+    Type        string `json:"Type"`
 }

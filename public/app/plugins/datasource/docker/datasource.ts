@@ -58,7 +58,10 @@ export default class DockerDatasource
       map((res) => {
         const refId = target.refId ?? 'A';
 
-        const merged = this.mergeIntoBuffer(refId, res.data);
+        const merged =
+          target.resourceType === 'container_stats'
+            ? this.mergeIntoBuffer(refId, res.data)
+            : res.data;
 
         return {
           ...res,

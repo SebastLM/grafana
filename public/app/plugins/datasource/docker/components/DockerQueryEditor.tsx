@@ -11,6 +11,7 @@ type Props = QueryEditorProps<DockerDatasource, DockerQuery, DockerOptions>;
 const RESOURCE_TYPES = [
   { label: 'Container Stats', value: 'container_stats' },
   { label: 'System DF', value: 'system_df' },
+  { label: 'All Containers Info', value: 'all_containers_info' },
 ];
 
 export function DockerQueryEditor({

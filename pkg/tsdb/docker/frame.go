@@ -14,8 +14,9 @@ type converter func(resp any) (*data.Frame, error)
 
 
 var converters = map[reflect.Type]converter{
-    reflect.TypeOf((*ContainerStats)(nil)): convertContainerStats,
-    reflect.TypeOf((*SystemDF)(nil)):       convertSystemDF,
+    reflect.TypeOf((*ContainerStats)(nil)):    convertContainerStats,
+    reflect.TypeOf((*SystemDF)(nil)):          convertSystemDF,
+    reflect.TypeOf((*AllContainersInfo)(nil)): convertAllContainersInfo,
 }
 
 
@@ -105,6 +106,52 @@ func convertSystemDF(resp any) (*data.Frame, error) {
     ), nil
 }
 
+func convertAllContainersInfo(resp any) (*data.Frame, error) {
+
+	df, ok := resp.(*AllContainersInfo)
+	if !ok || df == nil {
+		return nil, fmt.Errorf("expected *AllContainersInfo, got %T (%#v)", resp, resp)
+	}
+
+	items := df.Items
+	n := len(items)
+
+	names := make([]string, n)
+	states := make([]string, n)
+	statuses := make([]string, n)
+	images := make([]string, n)
+	publicPorts := make([]int64, n)
+    privatePorts := make([]int64, n)
+
+	for i, c := range items {
+		if len(c.Names) > 0 {
+			names[i] = c.Names[0]
+		} else {
+			names[i] = ""
+		}
+
+		states[i] = c.State
+		statuses[i] = c.Status
+		images[i] = c.Image
+
+		if len(c.Ports) > 0 {
+			publicPorts[i] = c.Ports[0].PublicPort
+			privatePorts[i] = c.Ports[0].PrivatePort
+		} else {
+			publicPorts[i] = 0
+			privatePorts[i] = 0
+		}
+	}
+
+	return data.NewFrame("containers",
+		data.NewField("name", nil, names),
+		data.NewField("state", nil, states),
+		data.NewField("status", nil, statuses),
+		data.NewField("image", nil, images),
+		data.NewField("public_port", nil, publicPorts),
+		data.NewField("private_port", nil, privatePorts),
+	), nil
+}
 
 func sumNetworkStats(networks map[string]NetworkStats) NetworkStats {
     var total NetworkStats

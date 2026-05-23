@@ -69,6 +69,8 @@ func (api *DockerAPI) DataQuery(ctx context.Context, query DockerQuery) (any, er
         return api.getContainerStats(ctx, query.ContainerID)
     case ResourceTypeSystemDF:
         return api.getSystemDF(ctx)
+    case ResourceTypeAllContainersInfo:
+        return api.getAllContainersInfo(ctx)
     default:
         return nil, backend.DownstreamError(fmt.Errorf("unknown resource type: %s", query.ResourceType))
     }
@@ -112,6 +114,25 @@ func (api *DockerAPI) getSystemDF(ctx context.Context) (*SystemDF, error) {
         return nil, backend.DownstreamError(fmt.Errorf("re-encoding disk usage: %w", err))
     }
     var system SystemDF
+    if err := json.Unmarshal(raw, &system); err != nil {
+        return nil, backend.DownstreamError(fmt.Errorf("parsing disk usage: %w", err))
+    }
+    return &system, nil
+}
+
+
+func (api *DockerAPI) getAllContainersInfo(ctx context.Context) (*AllContainersInfo, error) {
+    list, err := api.cli.ContainerList(ctx, client.ContainerListOptions{All: true,})
+    
+    if err != nil {
+        return nil, classifyDockerError(err, "fetching container list")
+    }
+
+    raw, err := json.Marshal(list)
+    if err != nil {
+        return nil, backend.DownstreamError(fmt.Errorf("re-encoding disk usage: %w", err))
+    }
+    var system AllContainersInfo
     if err := json.Unmarshal(raw, &system); err != nil {
         return nil, backend.DownstreamError(fmt.Errorf("parsing disk usage: %w", err))
     }
