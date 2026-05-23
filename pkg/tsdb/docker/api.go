@@ -11,12 +11,19 @@ import (
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
-	"github.com/moby/moby/client"
+	
+    "github.com/moby/moby/client"
 )
 
 
+type dockerClient interface {
+    ContainerStats(ctx context.Context, containerID string, opts client.ContainerStatsOptions) (client.ContainerStatsResult, error)
+    DiskUsage(ctx context.Context, opts client.DiskUsageOptions) (client.DiskUsageResult, error)
+    ContainerList(ctx context.Context, opts client.ContainerListOptions) (client.ContainerListResult, error)
+}
+
 type DockerAPI struct {
-	cli  *client.Client
+	cli  dockerClient
 	host string
 	log  log.Logger
 }

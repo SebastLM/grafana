@@ -43,11 +43,14 @@ func convertContainerStats(resp any) (*data.Frame, error) {
         return nil, fmt.Errorf("expected *ContainerStats, got %T", resp)
     }
 
-    now := time.Now()
+    t := stats.Read
+    if t.IsZero() {
+        t = time.Now()
+    }
     netStats := sumNetworkStats(stats.Networks)
 
-    return data.NewFrame("container_stats",
-        data.NewField("time", nil, []time.Time{now}),
+    frame := data.NewFrame("container_stats",
+        data.NewField("time", nil, []time.Time{t}),
         data.NewField("cpu_total_usage_ns", nil, []uint64{stats.CPUStats.CPUUsage.TotalUsage}),
         data.NewField("online_cpus", nil, []int64{int64(stats.CPUStats.OnlineCPUs)}),
         data.NewField("memory_used_bytes", nil, []uint64{stats.MemoryStats.Usage}),
@@ -61,7 +64,13 @@ func convertContainerStats(resp any) (*data.Frame, error) {
         data.NewField("network_tx_packets", nil, []uint64{netStats.TxPackets}),
         data.NewField("network_tx_errors", nil, []uint64{netStats.TxErrors}),
         data.NewField("network_tx_dropped", nil, []uint64{netStats.TxDropped}),
-    ), nil
+    )
+
+    frame.SetMeta(&data.FrameMeta{
+        Type: data.FrameTypeTimeSeriesWide,
+    })
+
+    return frame, nil
 }
 
 
