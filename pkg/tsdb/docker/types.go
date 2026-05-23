@@ -1,5 +1,9 @@
 package docker
 
+import (
+	"time"
+)
+
 // ---- Settings ----
 
 type DockerOptions struct {
@@ -29,6 +33,7 @@ type DockerQuery struct {
 
 // from GET /containers/{id}/stats
 type ContainerStats struct {
+	Read     	time.Time `json:"read"`
 	CPUStats    CPUStats               `json:"cpu_stats"`
 	MemoryStats MemoryStats            `json:"memory_stats"`
 	Networks    map[string]NetworkStats `json:"networks"`
