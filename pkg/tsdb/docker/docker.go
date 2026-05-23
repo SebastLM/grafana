@@ -126,10 +126,21 @@ func (s *Service) QueryData(ctx context.Context, req *backend.QueryDataRequest) 
 	}
 	response := backend.NewQueryDataResponse()
     for _, q := range req.Queries {
+		if isQueryEmpty(q) { continue }
         response.Responses[q.RefID] = s.handleQuery(ctx, dsInfo, q)
     }
 
 	return response, nil
+}
+
+func isQueryEmpty(query backend.DataQuery) bool {
+	var probeErr struct {
+        ResourceType string `json:"resourceType"`
+    }
+	if err := json.Unmarshal(query.JSON, &probeErr); err != nil {
+		return false
+	}
+	return probeErr.ResourceType == ""
 }
 
 
