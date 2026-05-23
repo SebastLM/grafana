@@ -10,12 +10,6 @@ type DockerOptions struct {
 	APIVersion string `json:"apiVersion,omitempty"`
 }
 
-type DockerSecureOptions struct {
-	TLSCACert     string
-	TLSClientCert string
-	TLSClientKey  string
-}
-
 // ---- Query ----
 
 const (

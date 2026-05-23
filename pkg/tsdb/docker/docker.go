@@ -52,10 +52,9 @@ func ProvideService(httpClientProvider *httpclient.Provider, tracer trace.Tracer
 
 
 type datasourceInfo struct {
-	HTTPClient *http.Client // unused for now
+	HTTPClient *http.Client
 	URL        string
 	Options    DockerOptions
-	SecureOpts DockerSecureOptions
 	API		   *DockerAPI
 	streams   map[string]data.FrameJSONCache
 	streamsMu sync.RWMutex
@@ -69,33 +68,26 @@ func  newInstanceSettings(httpClientProvider *httpclient.Provider, logger log.Lo
             if err := json.Unmarshal(settings.JSONData, &dockerOpts); err != nil {
                 return nil, fmt.Errorf("parsing settings: %w", err)
             }
-        }
-
-        secureOpts := DockerSecureOptions{
-            TLSCACert:     settings.DecryptedSecureJSONData["tlsCACert"],
-            TLSClientCert: settings.DecryptedSecureJSONData["tlsClientCert"],
-            TLSClientKey:  settings.DecryptedSecureJSONData["tlsClientKey"],
-        }
-
-        api, err := newDockerAPI(settings.URL, dockerOpts, secureOpts, logger)
-        if err != nil {
-            return nil, fmt.Errorf("creating docker api: %w", err)
-        }
+        }        
 
 		opts, err := settings.HTTPClientOptions(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("http client options: %w", err)
 		}
-		client, err := httpClientProvider.New(opts)
+		httpClient, err := httpClientProvider.New(opts)
 		if err != nil {
 			return nil, fmt.Errorf("creating http client: %w", err)
 		}
 
+		api, err := newDockerAPI(settings.URL, dockerOpts, httpClient, logger)
+        if err != nil {
+            return nil, fmt.Errorf("creating docker api: %w", err)
+        }
+
         return &datasourceInfo{
-			HTTPClient: client,
+			HTTPClient: httpClient,
             URL:        settings.URL,
             Options:    dockerOpts,
-            SecureOpts: secureOpts,
             API:        api,
 			streams:    make(map[string]data.FrameJSONCache),
         }, nil

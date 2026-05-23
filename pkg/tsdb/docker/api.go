@@ -2,12 +2,11 @@ package docker
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+    "strings"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
@@ -29,23 +28,23 @@ type DockerAPI struct {
 }
 
 
-func newDockerAPI(host string, opts DockerOptions, secure DockerSecureOptions, logger log.Logger) (*DockerAPI, error) {
-	clientOpts := []client.Opt {
-		client.WithHost(host),
+func newDockerAPI(host string, opts DockerOptions, httpClient *http.Client, logger log.Logger) (*DockerAPI, error) {	
+    sdkHost := host
+    if strings.HasPrefix(host, "https://") {
+        sdkHost = "tcp://" + strings.TrimPrefix(host, "https://")
+    } else if strings.HasPrefix(host, "http://") {
+        sdkHost = "tcp://" + strings.TrimPrefix(host, "http://")
+    }
+    
+    clientOpts := []client.Opt {
+		client.WithHost(sdkHost),
 	}
 
 	if opts.APIVersion != "" {
 		clientOpts = append(clientOpts, client.WithVersion(opts.APIVersion))
 	}
 
-	if secure.TLSCACert != "" || secure.TLSClientCert != "" {
-        tlsConfig, err := buildTLSConfig(secure)
-        if err != nil {
-            return nil, fmt.Errorf("building TLS config: %w", err)
-        }
-        httpClient := &http.Client{
-            Transport: &http.Transport{TLSClientConfig: tlsConfig},
-        }
+	if !strings.HasPrefix(host, "unix://") {
         clientOpts = append(clientOpts, client.WithHTTPClient(httpClient))
     }
 
@@ -55,24 +54,6 @@ func newDockerAPI(host string, opts DockerOptions, secure DockerSecureOptions, l
 	}
 
 	return &DockerAPI{cli: cli, host: host, log: logger}, nil
-}
-
-
-func buildTLSConfig(secure DockerSecureOptions) (*tls.Config, error) {
-	cert, err := tls.X509KeyPair([]byte(secure.TLSClientCert), []byte(secure.TLSClientKey))
-	if err != nil {
-		return nil, fmt.Errorf("invalid client cert/key: %w", err)
-	}
-
-	caCertPool := x509.NewCertPool()
-	if !caCertPool.AppendCertsFromPEM([]byte(secure.TLSCACert)) {
-    	return nil, fmt.Errorf("Failed to parse CA certificate")
-	}
-
-	return &tls.Config{
-				Certificates: []tls.Certificate{cert},
-				RootCAs:      caCertPool,
-			}, nil
 }
 
 
