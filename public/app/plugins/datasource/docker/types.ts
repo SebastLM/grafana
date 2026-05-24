@@ -4,6 +4,7 @@ import { type DataSourceJsonData } from '@grafana/data';
 export interface DockerQuery extends DataQuery {
     resourceType: 'container_stats' | 'system_df' | "all_containers_info";
     containerId?: string;
+    streaming?: boolean;
 } // TODO
 
 

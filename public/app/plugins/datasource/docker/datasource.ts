@@ -1,4 +1,4 @@
-import { Observable, of } from 'rxjs';
+import { Observable, of, merge } from 'rxjs';
 import { map } from 'rxjs/operators';
 
 import {
@@ -19,6 +19,8 @@ import {
   DockerContainer,
   ContainerOption,
 } from './types';
+
+import { doDockerChannelStream } from './streaming';
 
 export default class DockerDatasource
   extends DataSourceWithBackend<DockerQuery, DockerOptions>
@@ -48,28 +50,30 @@ export default class DockerDatasource
 
 
   query(options: DataQueryRequest<DockerQuery>): Observable<DataQueryResponse> {
-    const target = options.targets[0];
+    const targets = options.targets.filter((t) => !t.hide);
 
-    if (!target || target.hide) {
-      return of({ data: [] });
+    if (targets.length === 0) {
+        return of({ data: [] });
     }
 
-    return super.query(options).pipe(
-      map((res) => {
-        const refId = target.refId ?? 'A';
-
-        const merged =
-          target.resourceType === 'container_stats'
-            ? this.mergeIntoBuffer(refId, res.data)
-            : res.data;
-
-        return {
-          ...res,
-          data: merged,
-        };
-      })
-    );
-  }
+    const observables = targets.map((target) => {
+      if (
+          target.resourceType === 'container_stats' &&
+          target.containerId &&
+          target.streaming
+      ) {
+          return doDockerChannelStream(target, this, options);
+      }
+      return super.query({ ...options, targets: [target] }).pipe(
+            map((res) => {
+              const refId = target.refId ?? 'A';
+              const merged = this.mergeIntoBuffer(refId, res.data);
+              return { ...res, data: merged };
+        })
+      );
+  });
+  return merge(...observables);
+}
 
 
   private mergeIntoBuffer(refId: string, incoming: DataFrame[]): DataFrame[] {
@@ -161,8 +165,8 @@ export default class DockerDatasource
 
       if (fieldB.type === FieldType.time) continue;
 
-      const bTimeField = b.fields.find(f => f.type === FieldType.time)!;
-      const bTimes = bTimeField.values.toArray() as number[];
+      // const bTimeField = b.fields.find(f => f.type === FieldType.time)!;
+      // const bTimes = bTimeField.values.toArray() as number[];
 
       resultFields.push({
         name: fieldB.name,
@@ -215,7 +219,6 @@ export default class DockerDatasource
       value: c.Id,
     }));
   }
-
 
 
   exportToAbstractQueries(

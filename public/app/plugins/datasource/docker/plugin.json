@@ -5,6 +5,7 @@
 
   "metrics": true,
   "backend": true,
+  "streaming": true, 
 
   "executable": "gpx_docker",
   "info": {

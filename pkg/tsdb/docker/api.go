@@ -10,7 +10,7 @@ import (
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
-	
+
     "github.com/moby/moby/client"
 )
 
@@ -28,20 +28,22 @@ type DockerAPI struct {
 }
 
 
-func newDockerAPI(host string, opts DockerOptions, httpClient *http.Client, logger log.Logger) (*DockerAPI, error) {	
+func newDockerAPI(host string, opts DockerOptions, httpClient *http.Client, logger log.Logger) (*DockerAPI, error) {
     sdkHost := host
     if strings.HasPrefix(host, "https://") {
         sdkHost = "tcp://" + strings.TrimPrefix(host, "https://")
     } else if strings.HasPrefix(host, "http://") {
         sdkHost = "tcp://" + strings.TrimPrefix(host, "http://")
     }
-    
+
     clientOpts := []client.Opt {
 		client.WithHost(sdkHost),
 	}
 
 	if opts.APIVersion != "" {
 		clientOpts = append(clientOpts, client.WithVersion(opts.APIVersion))
+	} else {
+		clientOpts = append(clientOpts, client.WithAPIVersionNegotiation())
 	}
 
 	if !strings.HasPrefix(host, "unix://") {

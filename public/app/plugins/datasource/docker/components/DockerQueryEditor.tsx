@@ -1,4 +1,4 @@
-import { Stack, Select } from '@grafana/ui';
+import { Stack, Select, InlineField, Switch } from '@grafana/ui';
 import type { QueryEditorProps } from '@grafana/data';
 
 import type DockerDatasource from '../datasource';
@@ -15,42 +15,49 @@ const RESOURCE_TYPES = [
 ];
 
 export function DockerQueryEditor({
-  query,
-  onChange,
-  onRunQuery,
-  datasource,
+    query,
+    onChange,
+    onRunQuery,
+    datasource,
 }: Props) {
-  const update = (patch: Partial<DockerQuery>) => {
-    onChange({ ...query, ...patch });
+    const update = (patch: Partial<DockerQuery>) => {
+        onChange({ ...query, ...patch });
+        onRunQuery();
+    };
 
-    onRunQuery();
-  };
+    return (
+        <Stack direction="column" gap={1}>
+            <Select
+                value={RESOURCE_TYPES.find((r) => r.value === query.resourceType)}
+                options={RESOURCE_TYPES}
+                onChange={(v) =>
+                    update({
+                        resourceType: v?.value as DockerQuery['resourceType'],
+                    })
+                }
+            />
 
-  return (
-    <Stack direction="column" gap={1}>
-      <Select
-        value={RESOURCE_TYPES.find((r) => r.value === query.resourceType)}
-        options={RESOURCE_TYPES}
-        onChange={(v) =>
-          update({
-            resourceType: v?.value as DockerQuery['resourceType'],
-          })
-        }
-      />
-
-      {query.resourceType === 'container_stats' && (
-        <ContainerSelect
-          value={query.containerId}
-          onChange={(containerId: string) =>
-            update({
-              containerId,
-            })
-          }
-          loadOptions={(page, limit) =>
-            datasource.getContainers(page, limit)
-          }
-        />
-      )}
-    </Stack>
-  );
+            {query.resourceType === 'container_stats' && (
+                <>
+                    <ContainerSelect
+                        value={query.containerId}
+                        onChange={(containerId: string) =>
+                            update({ containerId })
+                        }
+                        loadOptions={(page, limit) =>
+                            datasource.getContainers(page, limit)
+                        }
+                    />
+                    <InlineField label="Streaming" labelWidth={14}>
+                        <Switch
+                            value={query.streaming ?? false}
+                            onChange={(e) =>
+                                update({ streaming: e.currentTarget.checked })
+                            }
+                        />
+                    </InlineField>
+                </>
+            )}
+        </Stack>
+    );
 }

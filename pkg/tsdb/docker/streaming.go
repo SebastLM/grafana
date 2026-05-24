@@ -12,12 +12,6 @@ import (
 )
 
 func (s *Service) SubscribeStream(ctx context.Context, req *backend.SubscribeStreamRequest) (*backend.SubscribeStreamResponse, error) {
-	if !isFeatureEnabled(ctx, flagDockerStreaming) {
-		return &backend.SubscribeStreamResponse{
-			Status: backend.SubscribeStreamStatusPermissionDenied,
-		}, fmt.Errorf("streaming is not supported")
-	}
-
 	dsInfo, err := s.getDSInfo(ctx, req.PluginContext)
 	if err != nil {
 		return &backend.SubscribeStreamResponse{
@@ -25,7 +19,7 @@ func (s *Service) SubscribeStream(ctx context.Context, req *backend.SubscribeStr
 		}, err
 	}
 
-	if !strings.HasPrefix(req.Path, "stats/") {  /// change
+	if !strings.HasPrefix(req.Path, "stats/") { 
 		return &backend.SubscribeStreamResponse{
 			Status: backend.SubscribeStreamStatusNotFound,
 		}, fmt.Errorf("expected tail in channel path")
