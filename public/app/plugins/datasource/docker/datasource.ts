@@ -67,7 +67,10 @@ export default class DockerDatasource
       return super.query({ ...options, targets: [target] }).pipe(
             map((res) => {
               const refId = target.refId ?? 'A';
-              const merged = this.mergeIntoBuffer(refId, res.data);
+              const merged = target.resourceType === 'container_stats' ? 
+                  this.mergeIntoBuffer(refId, res.data)
+                  : res.data;
+              
               return { ...res, data: merged };
         })
       );
@@ -204,10 +207,10 @@ export default class DockerDatasource
 
 
 
-  async getContainers(
-    page: number,
-    limit: number
-  ): Promise<ContainerOption[]> {
+  async getContainers(): Promise<ContainerOption[]> {
+    
+    // if containers list is too large can cause rendering problems
+    // on a later implemetation add pagination to prevent this
     const containers =
       await this.getResource<DockerContainer[]>(
         '/containers',

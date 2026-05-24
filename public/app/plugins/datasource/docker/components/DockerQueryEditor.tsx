@@ -44,8 +44,8 @@ export function DockerQueryEditor({
                         onChange={(containerId: string) =>
                             update({ containerId })
                         }
-                        loadOptions={(page, limit) =>
-                            datasource.getContainers(page, limit)
+                        loadOptions={() =>
+                            datasource.getContainers()
                         }
                     />
                     <InlineField label="Streaming" labelWidth={14}>
