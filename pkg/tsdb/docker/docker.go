@@ -20,9 +20,6 @@ import (
 )
 
 
-const flagDockerStreaming = "dockerStreaming"
-
-
 type Service struct {
 	im				instancemgmt.InstanceManager
 	tracer			trace.Tracer
