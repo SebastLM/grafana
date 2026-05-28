@@ -1,6 +1,9 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
+import type DockerDatasource from '../datasource';
+import type { DockerQuery } from '../types';
+
 import { DockerQueryEditor } from './DockerQueryEditor';
 
 interface ContainerSelectProps {
@@ -24,19 +27,6 @@ interface InlineFieldProps {
 interface SwitchProps {
   value: boolean;
   onChange: () => void;
-}
-
-interface DockerQueryEditorProps {
-  query: {
-    resourceType: string;
-    containerId: string;
-    streaming: boolean;
-  };
-  datasource: {
-    getContainers: () => Promise<Array<{ label: string; value: string }>>;
-  };
-  onChange: jest.Mock;
-  onRunQuery: jest.Mock;
 }
 
 jest.mock('./ContainerSelect', () => ({
@@ -76,15 +66,21 @@ jest.mock('@grafana/ui', () => ({
   ),
 }));
 
-const baseProps: DockerQueryEditorProps = {
+// Create a minimal mock datasource with just the method we need
+// @ts-expect-error - Mock only needs getContainers for testing
+const mockDatasource = {
+  getContainers: jest.fn().mockResolvedValue([{ label: 'c1', value: 'container-1' }]),
+} as DockerDatasource;
+
+const baseProps = {
   query: {
-    resourceType: 'container_stats',
+    resourceType: 'container_stats' as const,
     containerId: 'abc',
     streaming: false,
-  },
-  datasource: {
-    getContainers: jest.fn().mockResolvedValue([{ label: 'c1', value: 'container-1' }]),
-  },
+    refId: 'A',
+    hide: false,
+  } as DockerQuery,
+  datasource: mockDatasource,
   onChange: jest.fn(),
   onRunQuery: jest.fn(),
 };
@@ -119,7 +115,9 @@ describe('DockerQueryEditor', () => {
   });
 
   it('hides container UI for other resource types', () => {
-    render(<DockerQueryEditor {...baseProps} query={{ ...baseProps.query, resourceType: 'system_df' }} />);
+    render(
+      <DockerQueryEditor {...baseProps} query={{ ...baseProps.query, resourceType: 'system_df' } as DockerQuery} />
+    );
 
     expect(screen.queryByText('select-container')).not.toBeInTheDocument();
   });

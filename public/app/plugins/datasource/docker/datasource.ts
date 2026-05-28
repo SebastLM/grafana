@@ -9,19 +9,12 @@ import {
   type DataFrame,
   FieldType,
   toDataFrame,
+  type DataSourceInstanceSettings,
 } from '@grafana/data';
 import { DataSourceWithBackend } from '@grafana/runtime';
 
 import { doDockerChannelStream } from './streaming';
 import { type DockerQuery, type DockerOptions, type DockerContainer, type ContainerOption } from './types';
-
-interface InstanceSettings {
-  url: string;
-  name: string;
-  withCredentials: boolean;
-  basicAuth: string;
-  jsonData?: Partial<DockerOptions>;
-}
 
 export default class DockerDatasource
   extends DataSourceWithBackend<DockerQuery, DockerOptions>
@@ -37,14 +30,14 @@ export default class DockerDatasource
 
   private frameBuffer: Record<string, Map<string, DataFrame>> = {};
 
-  constructor(instanceSettings: InstanceSettings) {
+  constructor(instanceSettings: DataSourceInstanceSettings<DockerOptions>) {
     super(instanceSettings);
 
     this.type = 'docker';
-    this.url = instanceSettings.url;
+    this.url = instanceSettings.url || '';
     this.name = instanceSettings.name;
-    this.withCredentials = instanceSettings.withCredentials;
-    this.basicAuth = instanceSettings.basicAuth;
+    this.withCredentials = instanceSettings.withCredentials || false;
+    this.basicAuth = instanceSettings.basicAuth || '';
 
     instanceSettings.jsonData = instanceSettings.jsonData || {};
   }

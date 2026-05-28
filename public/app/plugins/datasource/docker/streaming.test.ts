@@ -1,7 +1,7 @@
 import { of } from 'rxjs';
 import { take } from 'rxjs/operators';
 
-import { LiveChannelScope, LoadingState, type DataQueryResponse } from '@grafana/data';
+import { LiveChannelScope, LoadingState, type DataQueryResponse, type DataQueryRequest, dateTime } from '@grafana/data';
 import { getGrafanaLiveSrv } from '@grafana/runtime';
 
 import type DockerDatasource from './datasource';
@@ -11,24 +11,6 @@ import type { DockerQuery } from './types';
 jest.mock('@grafana/runtime', () => ({
   getGrafanaLiveSrv: jest.fn(),
 }));
-
-// Define proper types for test objects
-interface TestQuery extends Partial<DockerQuery> {
-  containerId: string;
-  resourceType: 'container_stats';
-}
-
-interface TestDatasource {
-  uid: string;
-}
-
-interface TestOptions {
-  range: {
-    from: Date;
-    to: Date;
-  };
-  maxDataPoints: number;
-}
 
 interface LiveChannelArgs {
   scope: LiveChannelScope;
@@ -47,21 +29,32 @@ interface LiveChannelArgs {
 describe('doDockerChannelStream', () => {
   const mockStreamFn = jest.fn();
 
-  const query: TestQuery = {
+  const query: DockerQuery = {
     containerId: 'cpu',
     resourceType: 'container_stats',
+    refId: 'A',
+    hide: false,
+    streaming: false,
   };
 
-  const ds: TestDatasource = {
+  const ds = {
     uid: 'docker-uid',
-  };
+  } as DockerDatasource;
 
-  const options: TestOptions = {
+  const options: DataQueryRequest<DockerQuery> = {
+    targets: [query],
+    requestId: 'test',
+    interval: '',
+    intervalMs: 0,
     range: {
-      from: new Date(0),
-      to: new Date(1000),
+      from: dateTime(0),
+      to: dateTime(1000),
+      raw: { from: 'now-1h', to: 'now' },
     },
-    maxDataPoints: 10,
+    scopedVars: {},
+    startTime: 0,
+    timezone: 'browser',
+    app: 'test',
   };
 
   beforeEach(() => {
@@ -84,7 +77,7 @@ describe('doDockerChannelStream', () => {
       })
     );
 
-    doDockerChannelStream(query as DockerQuery, ds as DockerDatasource, options)
+    doDockerChannelStream(query, ds, options)
       .pipe(take(1))
       .subscribe({
         next: () => {
@@ -126,7 +119,7 @@ describe('doDockerChannelStream', () => {
 
     const results: DataQueryResponse[] = [];
 
-    doDockerChannelStream(query as DockerQuery, ds as DockerDatasource, options)
+    doDockerChannelStream(query, ds, options)
       .pipe(take(2))
       .subscribe({
         next: (resp) => {
@@ -162,7 +155,7 @@ describe('doDockerChannelStream', () => {
 
     const results: DataQueryResponse[] = [];
 
-    doDockerChannelStream(query as DockerQuery, ds as DockerDatasource, options)
+    doDockerChannelStream(query, ds, options)
       .pipe(take(2))
       .subscribe({
         next: (resp) => {
@@ -202,7 +195,7 @@ describe('doDockerChannelStream', () => {
       },
     });
 
-    doDockerChannelStream(query as DockerQuery, ds as DockerDatasource, options)
+    doDockerChannelStream(query, ds, options)
       .pipe(take(1))
       .subscribe({
         next: () => {

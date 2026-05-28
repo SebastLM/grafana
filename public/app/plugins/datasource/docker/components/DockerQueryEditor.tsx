@@ -1,4 +1,4 @@
-import type { QueryEditorProps } from '@grafana/data';
+import type { QueryEditorProps, SelectableValue } from '@grafana/data';
 import { Stack, Select, InlineField, Switch } from '@grafana/ui';
 
 import type DockerDatasource from '../datasource';
@@ -8,11 +8,11 @@ import { ContainerSelect } from './ContainerSelect';
 
 type Props = QueryEditorProps<DockerDatasource, DockerQuery, DockerOptions>;
 
-const RESOURCE_TYPES = [
+const RESOURCE_TYPES: Array<SelectableValue<DockerQuery['resourceType']>> = [
   { label: 'Container Stats', value: 'container_stats' },
   { label: 'System DF', value: 'system_df' },
   { label: 'All Containers Info', value: 'all_containers_info' },
-] as const;
+];
 
 export function DockerQueryEditor({ query, onChange, onRunQuery, datasource }: Props) {
   const update = (patch: Partial<DockerQuery>) => {
@@ -20,8 +20,8 @@ export function DockerQueryEditor({ query, onChange, onRunQuery, datasource }: P
     onRunQuery();
   };
 
-  const handleResourceTypeChange = (v: (typeof RESOURCE_TYPES)[number] | null) => {
-    if (v) {
+  const handleResourceTypeChange = (v: SelectableValue<DockerQuery['resourceType']>) => {
+    if (v?.value) {
       update({ resourceType: v.value });
     }
   };

@@ -1,24 +1,23 @@
-import { FieldType, toDataFrame, type DataQueryRequest, type DataQuery } from '@grafana/data';
+import { FieldType, toDataFrame, type DataQueryRequest, dateTime } from '@grafana/data';
 
 import DockerDatasource from './datasource';
-import type { DockerOptions } from './types';
-
-interface DataSourceConstructorArgs {
-  url: string;
-  name: string;
-  withCredentials: boolean;
-  basicAuth: string;
-  jsonData: Partial<DockerOptions>;
-}
+import type { DockerQuery } from './types';
 
 function createDS(): DockerDatasource {
-  const args: DataSourceConstructorArgs = {
+  const args = {
     url: 'http://localhost',
     name: 'docker',
     withCredentials: false,
     basicAuth: '',
     jsonData: {},
+    uid: 'test-uid',
+    type: 'docker',
+    readOnly: false,
+    access: 'proxy',
+    id: 1,
+    orgId: 1,
   };
+  // @ts-expect-error - Constructor expects DataSourceInstanceSettings but we're providing a minimal mock for testing
   return new DockerDatasource(args);
 }
 
@@ -26,18 +25,21 @@ describe('DockerDatasource (safe tests)', () => {
   const ds = createDS();
 
   it('returns empty when no targets', (done) => {
-    const emptyRequest: DataQueryRequest<DataQuery> = {
+    const emptyRequest: DataQueryRequest<DockerQuery> = {
       targets: [],
       requestId: 'test',
       interval: '',
       intervalMs: 0,
       range: {
-        from: { toDate: () => new Date(), toUnix: () => 0, valueOf: () => 0 },
-        to: { toDate: () => new Date(), toUnix: () => 0, valueOf: () => 0 },
+        from: dateTime(0),
+        to: dateTime(1000),
+        raw: { from: 'now-1h', to: 'now' },
       },
       scopedVars: {},
       startTime: 0,
-    } as DataQueryRequest<DataQuery>;
+      timezone: 'browser',
+      app: 'test',
+    };
 
     ds.query(emptyRequest).subscribe((res) => {
       expect(res.data).toEqual([]);
@@ -62,11 +64,13 @@ describe('DockerDatasource (safe tests)', () => {
       ],
     });
 
-    const result = (ds as DockerDatasource & { mergeFrames: Function }).mergeFrames(a, b);
+    // @ts-expect-error - Accessing private method for testing
+    const result = ds.mergeFrames(a, b);
 
-    const timeField = result.fields.find((f: { name: string }) => f.name === 'time')!;
-    expect(timeField.values).toContain(1000);
-    expect(timeField.values).toContain(3000);
+    const timeField = result.fields.find((f: { name: string }) => f.name === 'time');
+    expect(timeField).toBeDefined();
+    expect(timeField!.values).toContain(1000);
+    expect(timeField!.values).toContain(3000);
   });
 
   it('trimFrame limits to MAX_POINTS', () => {
@@ -86,7 +90,8 @@ describe('DockerDatasource (safe tests)', () => {
       ],
     });
 
-    const trimmed = (ds as DockerDatasource & { trimFrame: Function }).trimFrame(frame);
+    // @ts-expect-error - Accessing private method for testing
+    const trimmed = ds.trimFrame(frame);
 
     expect(trimmed.fields[0].values.length).toBe(500);
   });
