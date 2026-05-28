@@ -1,74 +1,70 @@
 package docker
 
 import (
-    "context"
-    "testing"
+	"context"
 	"errors"
+	"testing"
 
-    "github.com/grafana/grafana-plugin-sdk-go/backend"
-    "github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
-	
+	"github.com/grafana/grafana-plugin-sdk-go/backend"
+	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
+	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/moby/moby/client"
 )
 
-// newTestService builds a Service whose instance manager always returns a
-// datasourceInfo backed by the given fake client. This bypasses the real
-// instance-creation path so health checks can run without a daemon.
 func newTestService(fake dockerClient) *Service {
-    logger := backend.NewLoggerWith("logger", "test")
-    dsInfo := &datasourceInfo{
-        API: &DockerAPI{cli: fake, host: "test", log: logger},
-    }
-    return &Service{
-        im:     &fakeInstanceManager{instance: dsInfo},
-        logger: logger,
-    }
+	logger := backend.NewLoggerWith("logger", "test")
+	dsInfo := &datasourceInfo{
+		API:     &DockerAPI{cli: fake, host: "test", log: logger},
+		streams: make(map[string]data.FrameJSONCache),
+	}
+	return &Service{
+		im:     &fakeInstanceManager{instance: dsInfo},
+		logger: logger,
+	}
 }
 
-// fakeInstanceManager always hands back the same instance.
 type fakeInstanceManager struct {
-    instance instancemgmt.Instance
+	instance instancemgmt.Instance
 }
 
 func (f *fakeInstanceManager) Get(_ context.Context, _ backend.PluginContext) (instancemgmt.Instance, error) {
-    return f.instance, nil
+	return f.instance, nil
 }
 
 func (f *fakeInstanceManager) Do(_ context.Context, _ backend.PluginContext, _ instancemgmt.InstanceCallbackFunc) error {
-    return nil
+	return nil
 }
 
 func TestCheckHealth(t *testing.T) {
-    t.Run("healthy when system_df returns one frame", func(t *testing.T) {
-        // A valid DiskUsage that convertSystemDF turns into exactly one frame.
-        fake := &fakeDockerClient{
-            diskUsage: client.DiskUsageResult{ /* fill with valid data */ },
-        }
-        s := newTestService(fake)
+	t.Run("healthy when system_df returns one frame", func(t *testing.T) {
+		fake := &fakeDockerClient{
+			diskUsage: client.DiskUsageResult{},
+		}
+		s := newTestService(fake)
 
-        result, err := s.CheckHealth(context.Background(), &backend.CheckHealthRequest{
-            PluginContext: backend.PluginContext{},
-        })
-        if err != nil {
-            t.Fatalf("unexpected error: %v", err)
-        }
-        if result.Status != backend.HealthStatusOk {
-            t.Errorf("status: got %v, want OK. message: %s", result.Status, result.Message)
-        }
-    })
+		result, err := s.CheckHealth(context.Background(), &backend.CheckHealthRequest{
+			PluginContext: backend.PluginContext{},
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result.Status != backend.HealthStatusOk {
+			t.Errorf("status: got %v, want OK. message: %s", result.Status, result.Message)
+		}
+	})
 
-    t.Run("error status when DiskUsage fails", func(t *testing.T) {
-        fake := &fakeDockerClient{diskErr: errors.New("daemon down")}
-        s := newTestService(fake)
+	t.Run("error status when DiskUsage fails", func(t *testing.T) {
+		fake := &fakeDockerClient{diskErr: errors.New("daemon down")}
+		s := newTestService(fake)
 
-        result, err := s.CheckHealth(context.Background(), &backend.CheckHealthRequest{
-            PluginContext: backend.PluginContext{},
-        })
-        if err != nil {
-            t.Fatalf("CheckHealth returned err (should be nil; error goes in result): %v", err)
-        }
-        if result.Status != backend.HealthStatusError {
-            t.Errorf("status: got %v, want Error", result.Status)
-        }
-    })
+		result, err := s.CheckHealth(context.Background(), &backend.CheckHealthRequest{
+			PluginContext: backend.PluginContext{},
+		})
+		if err != nil {
+			t.Fatalf("CheckHealth returned err (should be nil; error goes in result): %v", err)
+		}
+		if result.Status != backend.HealthStatusError {
+			t.Errorf("status: got %v, want Error", result.Status)
+		}
+	})
 }
