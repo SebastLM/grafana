@@ -3,8 +3,10 @@ import userEvent from '@testing-library/user-event';
 
 import { ContainerSelect } from './ContainerSelect';
 
-jest.mock('@grafana/ui', () => {
+type Opt = { label: string; value: string };
+type LoadOptions = () => Promise<Opt[]>;
 
+jest.mock('@grafana/ui', () => {
   return {
     Stack: ({ children }: any) => <div>{children}</div>,
 
@@ -35,7 +37,7 @@ jest.mock('@grafana/ui', () => {
 
 describe('ContainerSelect', () => {
   it('loads options on mount', async () => {
-    const loadOptions = jest.fn().mockResolvedValue([
+    const loadOptions: jest.MockedFunction<LoadOptions> = jest.fn().mockResolvedValue([
       { label: 'container-1', value: 'c1' },
       { label: 'container-2', value: 'c2' },
     ]);
@@ -55,9 +57,9 @@ describe('ContainerSelect', () => {
   });
 
   it('shows loading state initially', async () => {
-    let resolveFn: any;
+    let resolveFn: (value: Opt[]) => void;
 
-    const loadOptions = jest.fn(
+    const loadOptions: jest.Mock<Promise<Opt[]>, []> = jest.fn(
       () =>
         new Promise((resolve) => {
           resolveFn = resolve;
@@ -84,7 +86,7 @@ describe('ContainerSelect', () => {
   it('calls onChange when selection changes', async () => {
     const user = userEvent.setup();
 
-    const loadOptions = jest.fn().mockResolvedValue([
+    const loadOptions: jest.MockedFunction<LoadOptions> = jest.fn().mockResolvedValue([
       { label: 'container-1', value: 'c1' },
     ]);
 
@@ -104,18 +106,18 @@ describe('ContainerSelect', () => {
   });
 
   it('renders selected value', async () => {
-    const loadOptions = jest.fn().mockResolvedValue([
-        { label: 'container-1', value: 'c1' },
+    const loadOptions: jest.MockedFunction<LoadOptions> = jest.fn().mockResolvedValue([
+      { label: 'container-1', value: 'c1' },
     ]);
 
     await act(async () => {
-        render(
+      render(
         <ContainerSelect value="c1" onChange={jest.fn()} loadOptions={loadOptions} />
-        );
+      );
     });
 
     const select = screen.getByTestId('container-select');
 
     expect((select as HTMLSelectElement).value).toBe('c1');
-    });
+  });
 });
