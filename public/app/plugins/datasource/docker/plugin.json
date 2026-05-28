@@ -5,13 +5,13 @@
 
   "metrics": true,
   "backend": true,
-  "streaming": true, 
+  "streaming": true,
 
   "executable": "gpx_docker",
   "info": {
     "description": "Container management datasource for Docker stats and system metrics",
     "author": {
-      "name": "test"
+      "name": "Pedro Antunes & Sebastião Mendonça"
     },
     "logos": {
       "small": "img/docker_logo.png",
