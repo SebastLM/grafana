@@ -123,7 +123,6 @@ export default class DockerDatasource
     const resultFields = a.fields.map(fieldA => {
       const fieldB = b.fields.find(f => f.name === fieldA.name);
 
-      // time field
       if (fieldA.type === FieldType.time) {
         return {
           name: fieldA.name,
@@ -162,14 +161,11 @@ export default class DockerDatasource
       };
     });
 
-    // include any fields that exist only in b
+
     for (const fieldB of b.fields) {
       if (resultFields.find(f => f.name === fieldB.name)) continue;
 
       if (fieldB.type === FieldType.time) continue;
-
-      // const bTimeField = b.fields.find(f => f.type === FieldType.time)!;
-      // const bTimes = bTimeField.values.toArray() as number[];
 
       resultFields.push({
         name: fieldB.name,

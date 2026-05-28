@@ -24,12 +24,10 @@ export function doDockerChannelStream(
     ds: DockerDatasource,
     options: DataQueryRequest<DockerQuery>,
 ): Observable<DataQueryResponse> {
-    // maximum time to keep values
     const range = options.range;
     const maxDelta = range.to.valueOf() - range.from.valueOf() + 1000;
     let maxLength = options.maxDataPoints ?? 1000;
     if (maxLength > 1000) {
-        // for small buffers, keep them small
         maxLength *= 2;
     }
 

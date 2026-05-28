@@ -19,8 +19,8 @@
     },
     "links": [
       {
-        "name": "Learn more",
-        "url": "https://docs.docker.com/"
+        "name": "Docker API documentation",
+        "url": "https://docs.docker.com/reference/api/engine/version/v1.54/"
       }
     ],
     "version": "1.0.0"
