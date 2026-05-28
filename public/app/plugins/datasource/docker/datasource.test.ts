@@ -1,21 +1,45 @@
-import { FieldType, toDataFrame } from '@grafana/data';
-import DockerDatasource from './datasource';
+import { FieldType, toDataFrame, type DataQueryRequest, type DataQuery } from '@grafana/data';
 
-function createDS() {
-  return new DockerDatasource({
+import DockerDatasource from './datasource';
+import type { DockerOptions } from './types';
+
+interface DataSourceConstructorArgs {
+  url: string;
+  name: string;
+  withCredentials: boolean;
+  basicAuth: string;
+  jsonData: Partial<DockerOptions>;
+}
+
+function createDS(): DockerDatasource {
+  const args: DataSourceConstructorArgs = {
     url: 'http://localhost',
     name: 'docker',
     withCredentials: false,
     basicAuth: '',
     jsonData: {},
-  } as any);
+  };
+  return new DockerDatasource(args);
 }
 
 describe('DockerDatasource (safe tests)', () => {
   const ds = createDS();
 
   it('returns empty when no targets', (done) => {
-    ds.query({ targets: [] } as any).subscribe((res) => {
+    const emptyRequest: DataQueryRequest<DataQuery> = {
+      targets: [],
+      requestId: 'test',
+      interval: '',
+      intervalMs: 0,
+      range: {
+        from: { toDate: () => new Date(), toUnix: () => 0, valueOf: () => 0 },
+        to: { toDate: () => new Date(), toUnix: () => 0, valueOf: () => 0 },
+      },
+      scopedVars: {},
+      startTime: 0,
+    } as DataQueryRequest<DataQuery>;
+
+    ds.query(emptyRequest).subscribe((res) => {
       expect(res.data).toEqual([]);
       done();
     });
@@ -38,9 +62,9 @@ describe('DockerDatasource (safe tests)', () => {
       ],
     });
 
-    const result = (ds as any).mergeFrames(a, b);
+    const result = (ds as DockerDatasource & { mergeFrames: Function }).mergeFrames(a, b);
 
-    const timeField = result.fields.find((f: any) => f.name === 'time')!;
+    const timeField = result.fields.find((f: { name: string }) => f.name === 'time')!;
     expect(timeField.values).toContain(1000);
     expect(timeField.values).toContain(3000);
   });
@@ -62,7 +86,7 @@ describe('DockerDatasource (safe tests)', () => {
       ],
     });
 
-    const trimmed = (ds as any).trimFrame(frame);
+    const trimmed = (ds as DockerDatasource & { trimFrame: Function }).trimFrame(frame);
 
     expect(trimmed.fields[0].values.length).toBe(500);
   });

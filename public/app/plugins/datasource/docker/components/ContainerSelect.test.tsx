@@ -6,25 +6,35 @@ import { ContainerSelect } from './ContainerSelect';
 type Opt = { label: string; value: string };
 type LoadOptions = () => Promise<Opt[]>;
 
+interface StackProps {
+  children: React.ReactNode;
+}
+
+interface AsyncSelectProps {
+  options: Opt[];
+  value: Opt | null;
+  onChange: (value: Opt | null) => void;
+  isLoading?: boolean;
+}
+
 jest.mock('@grafana/ui', () => {
   return {
-    Stack: ({ children }: any) => <div>{children}</div>,
+    Stack: ({ children }: StackProps) => <div>{children}</div>,
 
-    AsyncSelect: ({ options, value, onChange, isLoading }: any) => (
+    AsyncSelect: ({ options, value, onChange, isLoading }: AsyncSelectProps) => (
       <div>
         {isLoading && <div data-testid="loading">loading</div>}
 
         <select
           data-testid="container-select"
           value={value?.value ?? ''}
-          onChange={(e) =>
-            onChange(
-              options.find((o: any) => o.value === e.target.value) ?? null
-            )
-          }
+          onChange={(e) => {
+            const selectedOption = options.find((o: Opt) => o.value === e.target.value) ?? null;
+            onChange(selectedOption);
+          }}
         >
           <option value="">--</option>
-          {options.map((o: any) => (
+          {options.map((o: Opt) => (
             <option key={o.value} value={o.value}>
               {o.label}
             </option>
@@ -43,9 +53,7 @@ describe('ContainerSelect', () => {
     ]);
 
     await act(async () => {
-      render(
-        <ContainerSelect value={undefined} onChange={jest.fn()} loadOptions={loadOptions} />
-      );
+      render(<ContainerSelect value={undefined} onChange={jest.fn()} loadOptions={loadOptions} />);
     });
 
     expect(loadOptions).toHaveBeenCalledTimes(1);
@@ -57,7 +65,7 @@ describe('ContainerSelect', () => {
   });
 
   it('shows loading state initially', async () => {
-    let resolveFn: (value: Opt[]) => void;
+    let resolveFn: (value: Opt[]) => void = () => {};
 
     const loadOptions: jest.Mock<Promise<Opt[]>, []> = jest.fn(
       () =>
@@ -67,9 +75,7 @@ describe('ContainerSelect', () => {
     );
 
     await act(async () => {
-      render(
-        <ContainerSelect value={undefined} onChange={jest.fn()} loadOptions={loadOptions} />
-      );
+      render(<ContainerSelect value={undefined} onChange={jest.fn()} loadOptions={loadOptions} />);
     });
 
     expect(screen.getByTestId('loading')).toBeInTheDocument();
@@ -86,16 +92,14 @@ describe('ContainerSelect', () => {
   it('calls onChange when selection changes', async () => {
     const user = userEvent.setup();
 
-    const loadOptions: jest.MockedFunction<LoadOptions> = jest.fn().mockResolvedValue([
-      { label: 'container-1', value: 'c1' },
-    ]);
+    const loadOptions: jest.MockedFunction<LoadOptions> = jest
+      .fn()
+      .mockResolvedValue([{ label: 'container-1', value: 'c1' }]);
 
     const onChange = jest.fn();
 
     await act(async () => {
-      render(
-        <ContainerSelect value={undefined} onChange={onChange} loadOptions={loadOptions} />
-      );
+      render(<ContainerSelect value={undefined} onChange={onChange} loadOptions={loadOptions} />);
     });
 
     const select = screen.getByTestId('container-select');
@@ -106,14 +110,12 @@ describe('ContainerSelect', () => {
   });
 
   it('renders selected value', async () => {
-    const loadOptions: jest.MockedFunction<LoadOptions> = jest.fn().mockResolvedValue([
-      { label: 'container-1', value: 'c1' },
-    ]);
+    const loadOptions: jest.MockedFunction<LoadOptions> = jest
+      .fn()
+      .mockResolvedValue([{ label: 'container-1', value: 'c1' }]);
 
     await act(async () => {
-      render(
-        <ContainerSelect value="c1" onChange={jest.fn()} loadOptions={loadOptions} />
-      );
+      render(<ContainerSelect value="c1" onChange={jest.fn()} loadOptions={loadOptions} />);
     });
 
     const select = screen.getByTestId('container-select');

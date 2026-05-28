@@ -1,4 +1,5 @@
 import { type DataSourcePluginOptionsEditorProps } from '@grafana/data';
+
 import { type DockerOptions } from '../types';
 
 export function createDefaultDockerOptions(): DataSourcePluginOptionsEditorProps<DockerOptions>['options'] {
@@ -6,7 +7,7 @@ export function createDefaultDockerOptions(): DataSourcePluginOptionsEditorProps
     url: 'http://localhost:2375',
     jsonData: {},
     secureJsonFields: {},
-  } as any;
+  };
 }
 
 export function createConfigEditorProps(
@@ -16,5 +17,5 @@ export function createConfigEditorProps(
     options: createDefaultDockerOptions(),
     onOptionsChange: jest.fn(),
     ...overrides,
-  } as DataSourcePluginOptionsEditorProps<DockerOptions>;
+  };
 }

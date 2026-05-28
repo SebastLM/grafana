@@ -1,27 +1,62 @@
 import { of } from 'rxjs';
 import { take } from 'rxjs/operators';
 
-import { doDockerChannelStream } from './streaming';
+import { LiveChannelScope, LoadingState, type DataQueryResponse } from '@grafana/data';
 import { getGrafanaLiveSrv } from '@grafana/runtime';
-import { LiveChannelScope, LoadingState } from '@grafana/data';
+
+import type DockerDatasource from './datasource';
+import { doDockerChannelStream } from './streaming';
+import type { DockerQuery } from './types';
 
 jest.mock('@grafana/runtime', () => ({
   getGrafanaLiveSrv: jest.fn(),
 }));
 
+// Define proper types for test objects
+interface TestQuery extends Partial<DockerQuery> {
+  containerId: string;
+  resourceType: 'container_stats';
+}
+
+interface TestDatasource {
+  uid: string;
+}
+
+interface TestOptions {
+  range: {
+    from: Date;
+    to: Date;
+  };
+  maxDataPoints: number;
+}
+
+interface LiveChannelArgs {
+  scope: LiveChannelScope;
+  stream: string;
+  path: string;
+  data: {
+    containerId: string;
+    timeRange: {
+      from: number;
+      to: number;
+      maxDataPoints: number;
+    };
+  };
+}
+
 describe('doDockerChannelStream', () => {
   const mockStreamFn = jest.fn();
 
-  const query: any = {
+  const query: TestQuery = {
     containerId: 'cpu',
     resourceType: 'container_stats',
   };
 
-  const ds: any = {
+  const ds: TestDatasource = {
     uid: 'docker-uid',
   };
 
-  const options: any = {
+  const options: TestOptions = {
     range: {
       from: new Date(0),
       to: new Date(1000),
@@ -49,13 +84,13 @@ describe('doDockerChannelStream', () => {
       })
     );
 
-    doDockerChannelStream(query, ds, options)
+    doDockerChannelStream(query as DockerQuery, ds as DockerDatasource, options)
       .pipe(take(1))
       .subscribe({
         next: () => {
           expect(mockStreamFn).toHaveBeenCalledTimes(1);
 
-          const call = mockStreamFn.mock.calls[0][0];
+          const call = mockStreamFn.mock.calls[0][0] as LiveChannelArgs;
 
           expect(call.scope).toBe(LiveChannelScope.DataSource);
           expect(call.stream).toBe('docker-uid');
@@ -89,9 +124,9 @@ describe('doDockerChannelStream', () => {
       )
     );
 
-    const results: any[] = [];
+    const results: DataQueryResponse[] = [];
 
-    doDockerChannelStream(query, ds, options)
+    doDockerChannelStream(query as DockerQuery, ds as DockerDatasource, options)
       .pipe(take(2))
       .subscribe({
         next: (resp) => {
@@ -125,9 +160,9 @@ describe('doDockerChannelStream', () => {
       )
     );
 
-    const results: any[] = [];
+    const results: DataQueryResponse[] = [];
 
-    doDockerChannelStream(query, ds, options)
+    doDockerChannelStream(query as DockerQuery, ds as DockerDatasource, options)
       .pipe(take(2))
       .subscribe({
         next: (resp) => {
@@ -161,19 +196,19 @@ describe('doDockerChannelStream', () => {
     );
 
     (getGrafanaLiveSrv as jest.Mock).mockReturnValue({
-      getStream: (args: any) => {
+      getStream: (args: LiveChannelArgs) => {
         spy(args);
         return mockStreamFn();
       },
     });
 
-    doDockerChannelStream(query, ds, options)
+    doDockerChannelStream(query as DockerQuery, ds as DockerDatasource, options)
       .pipe(take(1))
       .subscribe({
         next: () => {
           expect(spy).toHaveBeenCalledTimes(1);
 
-          const call = spy.mock.calls[0][0];
+          const call = spy.mock.calls[0][0] as LiveChannelArgs;
 
           expect(call.scope).toBe(LiveChannelScope.DataSource);
           expect(call.stream).toBe('docker-uid');

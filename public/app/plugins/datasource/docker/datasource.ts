@@ -1,26 +1,27 @@
-import { Observable, of, merge } from 'rxjs';
+import { type Observable, of, merge } from 'rxjs';
 import { map } from 'rxjs/operators';
 
 import {
-  DataSourceWithQueryExportSupport,
-  AbstractQuery,
-  DataQueryRequest,
-  DataQueryResponse,
-  DataFrame,
+  type DataSourceWithQueryExportSupport,
+  type AbstractQuery,
+  type DataQueryRequest,
+  type DataQueryResponse,
+  type DataFrame,
   FieldType,
   toDataFrame,
 } from '@grafana/data';
-
 import { DataSourceWithBackend } from '@grafana/runtime';
 
-import {
-  DockerQuery,
-  DockerOptions,
-  DockerContainer,
-  ContainerOption,
-} from './types';
-
 import { doDockerChannelStream } from './streaming';
+import { type DockerQuery, type DockerOptions, type DockerContainer, type ContainerOption } from './types';
+
+interface InstanceSettings {
+  url: string;
+  name: string;
+  withCredentials: boolean;
+  basicAuth: string;
+  jsonData?: Partial<DockerOptions>;
+}
 
 export default class DockerDatasource
   extends DataSourceWithBackend<DockerQuery, DockerOptions>
@@ -36,7 +37,7 @@ export default class DockerDatasource
 
   private frameBuffer: Record<string, Map<string, DataFrame>> = {};
 
-  constructor(instanceSettings: any) {
+  constructor(instanceSettings: InstanceSettings) {
     super(instanceSettings);
 
     this.type = 'docker';
@@ -48,36 +49,28 @@ export default class DockerDatasource
     instanceSettings.jsonData = instanceSettings.jsonData || {};
   }
 
-
   query(options: DataQueryRequest<DockerQuery>): Observable<DataQueryResponse> {
     const targets = options.targets.filter((t) => !t.hide);
 
     if (targets.length === 0) {
-        return of({ data: [] });
+      return of({ data: [] });
     }
 
     const observables = targets.map((target) => {
-      if (
-          target.resourceType === 'container_stats' &&
-          target.containerId &&
-          target.streaming
-      ) {
-          return doDockerChannelStream(target, this, options);
+      if (target.resourceType === 'container_stats' && target.containerId && target.streaming) {
+        return doDockerChannelStream(target, this, options);
       }
       return super.query({ ...options, targets: [target] }).pipe(
-            map((res) => {
-              const refId = target.refId ?? 'A';
-              const merged = target.resourceType === 'container_stats' ? 
-                  this.mergeIntoBuffer(refId, res.data)
-                  : res.data;
-              
-              return { ...res, data: merged };
+        map((res) => {
+          const refId = target.refId ?? 'A';
+          const merged = target.resourceType === 'container_stats' ? this.mergeIntoBuffer(refId, res.data) : res.data;
+
+          return { ...res, data: merged };
         })
       );
-  });
-  return merge(...observables);
-}
-
+    });
+    return merge(...observables);
+  }
 
   private mergeIntoBuffer(refId: string, incoming: DataFrame[]): DataFrame[] {
     if (!this.frameBuffer[refId]) {
@@ -103,25 +96,41 @@ export default class DockerDatasource
     return Array.from(buffer.values());
   }
 
-
   private getSeriesKey(frame: DataFrame, index: number): string {
     return frame.name ?? `series-${index}`;
   }
 
-
-
   private mergeFrames(a: DataFrame, b: DataFrame): DataFrame {
-    const timeA = a.fields.find(f => f.type === FieldType.time)!;
-    const timeB = b.fields.find(f => f.type === FieldType.time)!;
+    const timeA = a.fields.find((f) => f.type === FieldType.time);
+    const timeB = b.fields.find((f) => f.type === FieldType.time);
 
-    const timeValuesA = timeA.values.toArray() as number[];
-    const timeValuesB = timeB.values.toArray() as number[];
+    if (!timeA || !timeB) {
+      return a;
+    }
+
+    // Convert to arrays safely without type assertions
+    const timeValuesA: number[] = [];
+    const timeValuesB: number[] = [];
+
+    for (let i = 0; i < timeA.values.length; i++) {
+      const val = timeA.values.get(i);
+      if (typeof val === 'number') {
+        timeValuesA.push(val);
+      }
+    }
+
+    for (let i = 0; i < timeB.values.length; i++) {
+      const val = timeB.values.get(i);
+      if (typeof val === 'number') {
+        timeValuesB.push(val);
+      }
+    }
 
     const allTimes = [...timeValuesA, ...timeValuesB];
     const uniqueTimes = Array.from(new Set(allTimes)).sort((x, y) => x - y);
 
-    const resultFields = a.fields.map(fieldA => {
-      const fieldB = b.fields.find(f => f.name === fieldA.name);
+    const resultFields = a.fields.map((fieldA) => {
+      const fieldB = b.fields.find((f) => f.name === fieldA.name);
 
       if (fieldA.type === FieldType.time) {
         return {
@@ -131,14 +140,26 @@ export default class DockerDatasource
         };
       }
 
-      const mapA = new Map<number, any>();
-      const mapB = new Map<number, any>();
+      const mapA = new Map<number, number | string | boolean | null>();
+      const mapB = new Map<number, number | string | boolean | null>();
 
       const aTimes = timeValuesA;
       const bTimes = timeValuesB;
 
-      const aVals = fieldA.values.toArray();
-      const bVals = fieldB?.values.toArray() ?? [];
+      // Get values without type assertions
+      const aVals: Array<number | string | boolean | null> = [];
+      for (let i = 0; i < fieldA.values.length; i++) {
+        const val = fieldA.values.get(i);
+        aVals.push(val !== undefined ? val : null);
+      }
+
+      const bVals: Array<number | string | boolean | null> = [];
+      if (fieldB) {
+        for (let i = 0; i < fieldB.values.length; i++) {
+          const val = fieldB.values.get(i);
+          bVals.push(val !== undefined ? val : null);
+        }
+      }
 
       for (let i = 0; i < aTimes.length; i++) {
         mapA.set(aTimes[i], aVals[i]);
@@ -148,9 +169,13 @@ export default class DockerDatasource
         mapB.set(bTimes[i], bVals[i]);
       }
 
-      const mergedValues = uniqueTimes.map(t => {
-        if (mapB.has(t)) return mapB.get(t);
-        if (mapA.has(t)) return mapA.get(t);
+      const mergedValues = uniqueTimes.map((t) => {
+        if (mapB.has(t)) {
+          return mapB.get(t);
+        }
+        if (mapA.has(t)) {
+          return mapA.get(t);
+        }
         return null;
       });
 
@@ -161,11 +186,14 @@ export default class DockerDatasource
       };
     });
 
-
     for (const fieldB of b.fields) {
-      if (resultFields.find(f => f.name === fieldB.name)) continue;
+      if (resultFields.find((f) => f.name === fieldB.name)) {
+        continue;
+      }
 
-      if (fieldB.type === FieldType.time) continue;
+      if (fieldB.type === FieldType.time) {
+        continue;
+      }
 
       resultFields.push({
         name: fieldB.name,
@@ -179,8 +207,6 @@ export default class DockerDatasource
       fields: resultFields,
     });
   }
-
-
 
   private trimFrame(frame: DataFrame): DataFrame {
     const length = frame.length;
@@ -201,17 +227,10 @@ export default class DockerDatasource
     });
   }
 
-
-
   async getContainers(): Promise<ContainerOption[]> {
-    
     // if containers list is too large can cause rendering problems
     // on a later implemetation add pagination to prevent this
-    const containers =
-      await this.getResource<DockerContainer[]>(
-        '/containers',
-        {}
-      );
+    const containers = await this.getResource<DockerContainer[]>('/containers', {});
 
     return containers.map((c) => ({
       label: c.Names?.[0] ?? c.Id,
@@ -219,10 +238,7 @@ export default class DockerDatasource
     }));
   }
 
-
-  exportToAbstractQueries(
-    queries: DockerQuery[]
-  ): Promise<AbstractQuery[]> {
+  exportToAbstractQueries(queries: DockerQuery[]): Promise<AbstractQuery[]> {
     return Promise.resolve([]);
   }
 }
