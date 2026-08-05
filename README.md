@@ -1,3 +1,8 @@
+**docker datasource showcase**
+
+<video src="https://github.com/user-attachments/assets/8d13bf65-94ae-41ac-bdad-899dd07e5060" autoplay loop muted playsinline width="100%">
+</video>
+
 ![Grafana Logo (Light)](docs/logo-horizontal.png#gh-light-mode-only)
 ![Grafana Logo (Dark)](docs/logo-horizontal-dark.png#gh-dark-mode-only)
 
